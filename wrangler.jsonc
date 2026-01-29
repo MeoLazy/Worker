@@ -1,0 +1,11 @@
+{
+  "name": "key",
+  "main": "key.js",
+  "compatibility_date": "2026-01-29",
+  "kv_namespaces": [
+    {
+      "binding": "KEY_DB",
+      "id": "0faa4276ec4c4c8aa87c350ae8f694ee"
+    }
+  ]
+}
