@@ -1,0 +1,11 @@
+{
+  "name": "api-key-worker",
+  "compatibility_date": "2026-01-29",
+  "main": "key.js",
+  "kv_namespaces": [
+    {
+      "binding": "KEY_DB",
+      "id": "KV_ID_THẬT_CỦA_BẠN"
+    }
+  ]
+}
