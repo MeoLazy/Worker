@@ -1,14 +1,25 @@
+// ================= CORS =================
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization"
 };
 
+// ================= WORKER =================
 export default {
   async fetch(request, env) {
+
+    // ✅ CORS preflight (BẮT BUỘC)
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: CORS_HEADERS
+      });
+    }
+
     const url = new URL(request.url);
     const now = Date.now();
-    const TTL = 30 * 60 * 60 * 1000; // 25 giờ
+    const TTL = 30 * 60 * 60 * 1000; // 30 giờ
 
     // ===== IP (ưu tiên IPv4) =====
     const ip =
@@ -96,7 +107,6 @@ export default {
   }
 };
 
-
 // ================= HELPERS =================
 
 function generateKey(len) {
@@ -146,6 +156,9 @@ function formatTime(ms) {
 function json(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
     status,
-    headers: { "Content-Type": "application/json" }
+    headers: {
+      "Content-Type": "application/json",
+      ...CORS_HEADERS
+    }
   });
 }
