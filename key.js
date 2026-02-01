@@ -5,11 +5,9 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization"
 };
 
-// ================= WORKER =================
 export default {
   async fetch(request, env) {
 
-    // ✅ CORS preflight (BẮT BUỘC)
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
@@ -21,51 +19,42 @@ export default {
     const now = Date.now();
     const TTL = 30 * 60 * 60 * 1000; // 30 giờ
 
-    // ===== IP (ưu tiên IPv4) =====
     const ip =
       request.headers.get("CF-Connecting-IP-V4") ||
       request.headers.get("CF-Connecting-IP") ||
       "unknown";
 
-    // ===== META =====
-    const ua = request.headers.get("User-Agent") || "";
-    const os = detectOS(ua);
-    const browser = detectBrowser(ua);
-    const country = request.cf?.country || "Unknown";
-
-    // ===== ROOT =====
+    // ======================
+    // ROOT
+    // ======================
     if (url.pathname === "/") {
-      return json({ error: "Not Found" }, 404);
+      return json({ success: false, error: "NOT_FOUND" }, 404);
     }
 
     // ======================
-    // 🔑 CREATE / GET KEY
+    // 🔑 CREATE KEY
     // ======================
     if (url.pathname === "/create") {
       const ipBind = `ip:${ip}`;
 
-      // 🔁 Nếu IP đã có key → trả lại
+      // Nếu IP đã có key còn hạn → trả lại
       const oldKey = await env.KEY_DB.get(ipBind);
       if (oldKey) {
         const raw = await env.KEY_DB.get(`key:${oldKey}`);
         if (raw) {
           const data = JSON.parse(raw);
           if (data.expires_at > now) {
-            return json(format(data, now, "OLD_KEY"));
+            return json(buildCreateResponse(data, now));
           }
         }
       }
 
-      // 🆕 Tạo key mới
+      // Tạo key mới
       const key = generateKey(10);
 
       const data = {
         key,
         ip,
-        country,
-        os,
-        browser,
-        created_at: now,
         expires_at: now + TTL
       };
 
@@ -77,7 +66,7 @@ export default {
         expirationTtl: TTL / 1000
       });
 
-      return json(format(data, now, "NEW_KEY"));
+      return json(buildCreateResponse(data, now));
     }
 
     // ======================
@@ -85,25 +74,28 @@ export default {
     // ======================
     if (url.pathname === "/verify") {
       const key = url.searchParams.get("key");
-      if (!key) return json({ error: "KEY_REQUIRED" }, 400);
+      if (!key) {
+        return json({ success: false, error: "KEY_REQUIRED" }, 400);
+      }
 
       const raw = await env.KEY_DB.get(`key:${key}`);
       if (!raw) {
-        return json({ valid: false, error: "KEY_INVALID" }, 403);
+        return json({ success: false, error: "KEY_INVALID" }, 403);
       }
 
       const data = JSON.parse(raw);
       if (data.expires_at <= now) {
-        return json({ valid: false, error: "KEY_EXPIRED" }, 403);
+        return json({ success: false, error: "KEY_EXPIRED" }, 403);
       }
 
       return json({
-        valid: true,
-        ...format(data, now)
+        success: true,
+        expires_at: new Date(data.expires_at).toISOString(),
+        time_remaining: formatTime(data.expires_at - now)
       });
     }
 
-    return json({ error: "Not Found" }, 404);
+    return json({ success: false, error: "NOT_FOUND" }, 404);
   }
 };
 
@@ -113,43 +105,21 @@ function generateKey(len) {
   return crypto.randomUUID().replace(/-/g, "").slice(0, len);
 }
 
-function detectOS(ua) {
-  if (/android/i.test(ua)) return "Android";
-  if (/iphone|ipad|ipod/i.test(ua)) return "iOS";
-  if (/windows/i.test(ua)) return "Windows";
-  if (/mac os|macintosh/i.test(ua)) return "MacOS";
-  if (/linux/i.test(ua)) return "Linux";
-  return "Other";
-}
-
-function detectBrowser(ua) {
-  if (/fbav|fban/i.test(ua)) return "Facebook In-App";
-  if (/instagram/i.test(ua)) return "Instagram In-App";
-  if (/chrome/i.test(ua) && !/edge/i.test(ua)) return "Chrome";
-  if (/safari/i.test(ua) && !/chrome/i.test(ua)) return "Safari";
-  if (/firefox/i.test(ua)) return "Firefox";
-  if (/edge/i.test(ua)) return "Edge";
-  return "Other";
-}
-
-function format(data, now, status = "OK") {
-  return {
-    status,
-    key: data.key,
-    ip: data.ip,
-    country: data.country,
-    os: data.os,
-    browser: data.browser,
-    created_at: new Date(data.created_at).toISOString(),
-    remaining_time: formatTime(data.expires_at - now)
-  };
-}
-
 function formatTime(ms) {
+  const totalMinutes = Math.floor(ms / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  const pad = n => String(n).padStart(2, "0");
+  return `${pad(hours)}:${pad(minutes)}`;
+}
+
+function buildCreateResponse(data, now) {
   return {
-    hours: Math.floor(ms / 3600000),
-    minutes: Math.floor((ms % 3600000) / 60000),
-    seconds: Math.floor((ms % 60000) / 1000)
+    success: true,
+    key: data.key,
+    expires_at: new Date(data.expires_at).toISOString(),
+    time_remaining: formatTime(data.expires_at - now)
   };
 }
 
