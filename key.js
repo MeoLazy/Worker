@@ -50,7 +50,7 @@ export default {
       }
 
       // Tạo key mới
-      const key = generateKey(10);
+      const key = generateKey(15);
 
       const data = {
         key,
