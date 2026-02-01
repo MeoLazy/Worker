@@ -2,7 +2,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const now = Date.now();
-    const TTL = 25 * 60 * 60 * 1000; // 25 giờ
+    const TTL = 30 * 60 * 60 * 1000; // 25 giờ
 
     // ===== IP (ưu tiên IPv4) =====
     const ip =
