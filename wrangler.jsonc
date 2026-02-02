@@ -1,5 +1,5 @@
 {
-  "name": "key",
+  "name": "ip",
   "main": "key.js",
   "compatibility_date": "2026-01-29",
   "kv_namespaces": [
