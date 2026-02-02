@@ -1,4 +1,6 @@
 // ================= CORS =================
+const ALLOWED_CREATE_DOMAIN = "https://turbolite.asia";
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -8,6 +10,7 @@ const CORS_HEADERS = {
 export default {
   async fetch(request, env) {
 
+    // ===== CORS preflight =====
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
@@ -32,9 +35,25 @@ export default {
     }
 
     // ======================
-    // 🔑 CREATE KEY
+    // 🔑 CREATE KEY (CHỈ CHO turbolite.xyz)
     // ======================
-    if (url.pathname === "/create") {
+    if (url.pathname === "/key") {
+
+      // 🔒 Check domain
+      const origin = request.headers.get("Origin");
+      const referer = request.headers.get("Referer");
+
+      const allowed =
+        (origin && origin.startsWith(ALLOWED_CREATE_DOMAIN)) ||
+        (referer && referer.startsWith(ALLOWED_CREATE_DOMAIN));
+
+      if (!allowed) {
+        return json(
+          { success: false, error: "FORBIDDEN_DOMAIN" },
+          403
+        );
+      }
+
       const ipBind = `ip:${ip}`;
 
       // Nếu IP đã có key còn hạn → trả lại
@@ -70,7 +89,7 @@ export default {
     }
 
     // ======================
-    // ✅ VERIFY KEY
+    // ✅ VERIFY KEY (PUBLIC)
     // ======================
     if (url.pathname === "/verify") {
       const key = url.searchParams.get("key");
